@@ -98,9 +98,152 @@ export class MyMCP extends McpAgent<Env, Record<string, never>, Props> {
 			}),
 		);
 
+		const { hubspotAccessToken } = this.getConfig((this as any).props);
 
+		// Companies: https://developers.hubspot.com/docs/reference/api/crm/objects/companies
+		const companyPropertiesSchema = z
+			.object({
+				name: z.string().optional(),
+				domain: z.string().optional(),
+				website: z.string().url().optional(),
+				description: z.string().optional(),
+				industry: z.string().optional(),
+				numberofemployees: z.number().optional(),
+				annualrevenue: z.number().optional(),
+				city: z.string().optional(),
+				state: z.string().optional(),
+				country: z.string().optional(),
+				phone: z.string().optional(),
+				address: z.string().optional(),
+				address2: z.string().optional(),
+				zip: z.string().optional(),
+				type: z.string().optional(),
+				lifecyclestage: z
+					.enum(["lead", "customer", "opportunity", "subscriber", "other"])
+					.optional(),
+			})
+			.catchall(z.any());
 
-		
+		this.server.tool(
+			"crm_create_company",
+			"Create a new company with validated properties",
+			{
+				properties: companyPropertiesSchema,
+				associations: z
+					.array(
+						z.object({
+							to: z.object({ id: z.string() }),
+							types: z.array(
+								z.object({
+									associationCategory: z.string(),
+									associationTypeId: z.number(),
+								}),
+							),
+						}),
+					)
+					.optional(),
+			},
+			async (params) => {
+				return this.handleEndpoint(async () => {
+					const endpoint = "/crm/v3/objects/companies";
+					return await this.makeApiRequestWithErrorHandling(hubspotAccessToken, endpoint, {}, "POST", {
+						properties: params.properties,
+						associations: params.associations,
+					});
+				});
+			},
+		);
+
+		this.server.tool(
+			"crm_update_company",
+			"Update an existing company with validated properties",
+			{
+				companyId: z.string(),
+				properties: companyPropertiesSchema,
+			},
+			async (params) => {
+				return this.handleEndpoint(async () => {
+					const endpoint = `/crm/v3/objects/companies/${params.companyId}`;
+					return await this.makeApiRequestWithErrorHandling(hubspotAccessToken, endpoint, {}, "PATCH", {
+						properties: params.properties,
+					});
+				});
+			},
+		);
+
+		this.server.tool(
+			"crm_get_company",
+			"Get a single company by ID with specific properties and associations",
+			{
+				companyId: z.string(),
+				properties: z.array(z.string()).optional(),
+				associations: z.array(z.enum(["contacts", "deals", "tickets"])).optional(),
+			},
+			async (params) => {
+				return this.handleEndpoint(async () => {
+					const endpoint = `/crm/v3/objects/companies/${params.companyId}`;
+					return await this.makeApiRequestWithErrorHandling(hubspotAccessToken, endpoint, {
+						properties: params.properties?.join(","),
+						associations: params.associations?.join(","),
+					});
+				});
+			},
+		);
+
+		this.server.tool(
+			"crm_search_companies",
+			"Search companies with company-specific filters",
+			{
+				filterGroups: z.array(
+					z.object({
+						filters: z.array(
+							z.object({
+								propertyName: z.string(),
+								operator: z.enum([
+									"EQ",
+									"NEQ",
+									"LT",
+									"LTE",
+									"GT",
+									"GTE",
+									"BETWEEN",
+									"IN",
+									"NOT_IN",
+									"HAS_PROPERTY",
+									"NOT_HAS_PROPERTY",
+									"CONTAINS_TOKEN",
+									"NOT_CONTAINS_TOKEN",
+								]),
+								value: z.any(),
+							}),
+						),
+					}),
+				),
+				properties: z.array(z.string()).optional(),
+				limit: z.number().min(1).max(100).optional(),
+				after: z.string().optional(),
+				sorts: z
+					.array(
+						z.object({
+							propertyName: z.string(),
+							direction: z.enum(["ASCENDING", "DESCENDING"]),
+						}),
+					)
+					.optional(),
+			},
+			async (params) => {
+				return this.handleEndpoint(async () => {
+					const endpoint = "/crm/v3/objects/companies/search";
+					return await this.makeApiRequestWithErrorHandling(hubspotAccessToken, endpoint, {}, "POST", {
+						filterGroups: params.filterGroups,
+						properties: params.properties,
+						limit: params.limit,
+						after: params.after,
+						sorts: params.sorts,
+					});
+				});
+			},
+		);
 	}
 }
 
