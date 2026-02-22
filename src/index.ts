@@ -79,8 +79,7 @@ export class MyMCP extends McpAgent<Env, Record<string, never>, Props> {
 	
 	private getConfig(config: any) {
 	  return {
-	    hubspotAccessToken: config?.HUBSPOT_ACCESS_TOKEN || process.env.HUBSPOT_ACCESS_TOKEN,
-	    telemetryEnabled: config?.TELEMETRY_ENABLED || process.env.TELEMETRY_ENABLED || "true"
+	    hubspotAccessToken: config?.HUBSPOT_ACCESS_TOKEN || env.HUBSPOT_ACCESS_TOKEN
 	  }
 	}
 	
